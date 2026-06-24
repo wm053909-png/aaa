@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图书管理系统 2.0</title>
+    <style>
+        /* ========== 全局重置 ========== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: #f0f2f5;
+            color: #333;
+        }
+
+        /* ========== 顶部导航栏 ========== */
+        .header {
+            background: linear-gradient(135deg, #1a73e8, #0d47a1);
+            color: white;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header h1 { font-size: 22px; font-weight: 600; }
+        .header-right { display: flex; align-items: center; gap: 16px; }
+        .reader-select {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: none;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        /* ========== 搜索栏 ========== */
+        .search-bar {
+            background: white;
+            padding: 16px 24px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .search-input {
+            flex: 1;
+            min-width: 200px;
+            padding: 10px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 15px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        .search-input:focus { border-color: #1a73e8; }
+        .search-hint {
+            color: #888;
+            font-size: 13px;
+        }
+
+        /* ========== 主体布局 ========== */
+        .main-container {
+            display: flex;
+            min-height: calc(100vh - 120px);
+        }
+
+        /* ========== 左侧分类树 ========== */
+        .sidebar {
+            width: 220px;
+            background: white;
+            border-right: 1px solid #e0e0e0;
+            padding: 16px 0;
+            flex-shrink: 0;
+        }
+        .sidebar-title {
+            padding: 0 16px 12px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .category-item {
+            padding: 10px 16px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .category-item:hover {
+            background: #e8f0fe;
+            color: #1a73e8;
+        }
+        .category-item.active {
+            background: #e8f0fe;
+            color: #1a73e8;
+            border-left-color: #1a73e8;
+            font-weight: 600;
+        }
+        .category-icon {
+            width: 20px;
+            text-align: center;
+        }
+        .category-count {
+            margin-left: auto;
+            background: #e0e0e0;
+            color: #666;
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 10px;
+        }
+
+        /* ========== 图书卡片网格 ========== */
+        .content {
+            flex: 1;
+            padding: 20px;
+        }
+        .content-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .content-title { font-size: 16px; color: #666; }
+        .add-book-btn {
+            padding: 8px 16px;
+            background: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        .add-book-btn:hover { background: #1557b0; }
+
+        .book-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 20px;
+        }
+
+        /* ========== 图书卡片 ========== */
+        .book-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+        }
+        .book-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        }
+        .book-cover {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 48px;
+            position: relative;
+        }
+        .book-cover img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .book-cover-placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+        }
+        .book-info {
+            padding: 14px;
+        }
+        .book-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #1a1a1a;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .book-author {
+            font-size: 13px;
+            color: #888;
+            margin-bottom: 4px;
+        }
+        .book-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+        }
+        .book-category {
+            font-size: 12px;
+            color: #1a73e8;
+            background: #e8f0fe;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+        .book-stock {
+            font-size: 12px;
+            color: #666;
+        }
+        .book-stock.out-of-stock { color: #d32f2f; font-weight: 600; }
+
+        /* ========== 借阅按钮 ========== */
+        .borrow-btn {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 0 0 12px 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: -1px;
+        }
+        .borrow-btn.can-borrow {
+            background: #1a73e8;
+            color: white;
+        }
+        .borrow-btn.can-borrow:hover { background: #1557b0; }
+        .borrow-btn.borrowed {
+            background: #f5f5f5;
+            color: #888;
+            cursor: not-allowed;
+        }
+        .borrow-btn.disabled {
+            background: #e0e0e0;
+            color: #aaa;
+            cursor: not-allowed;
+        }
+
+        /* ========== 空状态 ========== */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #aaa;
+        }
+        .empty-state-icon { font-size: 64px; margin-bottom: 16px; }
+        .empty-state-text { font-size: 16px; }
+
+        /* ========== 弹窗（Modal） ========== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            width: 90%;
+            max-width: 480px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: modalIn 0.2s ease-out;
+        }
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .modal h3 { font-size: 18px; margin-bottom: 16px; }
+        .modal-close {
+            float: right;
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: #888;
+        }
+        .modal-close:hover { color: #333; }
+
+        /* ========== 提示消息（Toast） ========== */
+        .toast-container {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .toast {
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            animation: toastIn 0.3s ease-out;
+            max-width: 360px;
+        }
+        .toast.success { background: #43a047; }
+        .toast.error { background: #d32f2f; }
+        .toast.info { background: #1a73e8; }
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateX(100px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        /* ========== 添加图书表单 ========== */
+        .form-group {
+            margin-bottom: 14px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: #555;
+        }
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #1a73e8;
+        }
+        .form-submit {
+            width: 100%;
+            padding: 10px;
+            background: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 15px;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+        .form-submit:hover { background: #1557b0; }
+
+        /* ========== 图片预览 ========== */
+        .cover-preview {
+            width: 100%;
+            height: 120px;
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #aaa;
+            overflow: hidden;
+            cursor: pointer;
+            position: relative;
+        }
+        .cover-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .cover-preview input[type="file"] {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        /* ========== Loading 动画 ========== */
+        .loading {
+            display: flex;
+            justify-content: center;
+            padding: 40px;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e0e0e0;
+            border-top-color: #1a73e8;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<!-- ========== 顶部导航栏 ========== -->
+<div class="header">
+    <h1>&#128218; 图书管理系统 2.0</h1>
+    <div class="header-right">
+        <span style="font-size:14px;">当前读者：</span>
+        <select id="readerSelect" class="reader-select">
+            <option value="">请选择读者</option>
+        </select>
+    </div>
+</div>
+
+<!-- ========== 搜索栏 ========== -->
+<div class="search-bar">
+    <input type="text" id="searchInput" class="search-input"
+           placeholder="输入书名、作者或ISBN搜索..." onkeyup="debounceSearch()">
+    <span class="search-hint" id="resultCount"></span>
+</div>
+
+<!-- ========== 主体布局 ========== -->
+<div class="main-container">
+    <!-- 左侧分类树 -->
+    <div class="sidebar">
+        <div class="sidebar-title">图书分类</div>
+        <div id="categoryList">
+            <!-- 动态加载分类 -->
+        </div>
+    </div>
+
+    <!-- 图书卡片网格 -->
+    <div class="content">
+        <div class="content-header">
+            <span class="content-title" id="contentTitle">全部图书</span>
+            <button class="add-book-btn" onclick="showAddBookModal()">+ 添加图书</button>
+        </div>
+        <div id="bookGrid" class="book-grid">
+            <!-- 动态加载图书卡片 -->
+        </div>
+        <div id="emptyState" class="empty-state" style="display:none;">
+            <div class="empty-state-icon">&#128214;</div>
+            <div class="empty-state-text">没有找到相关图书</div>
+        </div>
+    </div>
+</div>
+
+<!-- ========== Toast 提示容器 ========== -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ========== 添加图书弹窗 ========== -->
+<div class="modal-overlay" id="addBookModal">
+    <div class="modal">
+        <button class="modal-close" onclick="closeAddBookModal()">&times;</button>
+        <h3>添加新图书</h3>
+        <div class="form-group">
+            <label>书名 *</label>
+            <input type="text" id="addTitle" placeholder="请输入书名">
+        </div>
+        <div class="form-group">
+            <label>作者</label>
+            <input type="text" id="addAuthor" placeholder="请输入作者">
+        </div>
+        <div class="form-group">
+            <label>ISBN</label>
+            <input type="text" id="addIsbn" placeholder="请输入ISBN">
+        </div>
+        <div class="form-group">
+            <label>分类</label>
+            <select id="addCategory">
+                <!-- 动态加载 -->
+            </select>
+        </div>
+        <div class="form-group">
+            <label>库存</label>
+            <input type="number" id="addStock" value="1" min="0">
+        </div>
+        <div class="form-group">
+            <label>封面图片</label>
+            <div class="cover-preview" id="coverPreview">
+                <span>点击上传封面</span>
+                <input type="file" id="coverFile" accept="image/*" onchange="previewCover(this)">
+            </div>
+        </div>
+        <input type="hidden" id="addCoverPath" value="">
+        <button class="form-submit" onclick="submitAddBook()">确认添加</button>
+    </div>
+</div>
+
+<!-- ========== JavaScript（核心交互逻辑） ========== -->
+<script>
+    // ============================================
+    // 全局状态
+    // ============================================
+    let currentCategoryId = 0;    // 当前选中的分类ID（0=全部）
+    let currentKeyword = '';       // 当前搜索关键词
+    let debounceTimer = null;     // 防抖定时器
+    let currentReaderId = null;    // 当前选中的读者ID
+
+    // ============================================
+    // 初始化：加载分类、读者、全部图书
+    // ============================================
+    document.addEventListener('DOMContentLoaded', function() {
+        loadCategories();
+        loadReaders();
+        searchBooks();
+    });
+
+    // ============================================
+    // 加载分类列表（左侧分类树）
+    // ============================================
+    function loadCategories() {
+        fetch('api/categories')
+            .then(function(resp) { return resp.json(); })
+            .then(function(result) {
+                if (result.code === 200) {
+                    renderCategories(result.data);
+                }
+            })
+            .catch(function(err) {
+                console.error('加载分类失败:', err);
+            });
+    }
+
+    function renderCategories(categories) {
+        var html = '<div class="category-item active" onclick="selectCategory(0, this)">' +
+                   '<span class="category-icon">&#128218;</span>全部</div>';
+        var icons = ['&#128187;', '&#128214;', '&#128220;', '&#128300;', '&#127912;'];
+        for (var i = 0; i < categories.length; i++) {
+            var c = categories[i];
+            var icon = icons[i % icons.length];
+            html += '<div class="category-item" onclick="selectCategory(' + c.id + ', this)">' +
+                    '<span class="category-icon">' + icon + '</span>' + escapeHtml(c.name) +
+                    '</div>';
+        }
+        document.getElementById('categoryList').innerHTML = html;
+    }
+
+    // ============================================
+    // 分类切换（触发异步检索）
+    // ============================================
+    function selectCategory(categoryId, element) {
+        currentCategoryId = categoryId;
+
+        // 更新选中状态
+        var items = document.querySelectorAll('.category-item');
+        for (var i = 0; i < items.length; i++) {
+            items[i].classList.remove('active');
+        }
+        element.classList.add('active');
+
+        // 更新标题
+        var title = categoryId === 0 ? '全部图书' : element.textContent.trim();
+        document.getElementById('contentTitle').textContent = title;
+
+        // 触发搜索
+        searchBooks();
+    }
+
+    // ============================================
+    // 搜索防抖：用户输入时 300ms 内不再次触发
+    // ============================================
+    function debounceSearch() {
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(function() {
+            currentKeyword = document.getElementById('searchInput').value.trim();
+            searchBooks();
+        }, 300);
+    }
+
+    // ============================================
+    // 核心：异步检索图书（AJAX + Fetch API）
+    // ============================================
+    function searchBooks() {
+        // 显示 loading
+        document.getElementById('bookGrid').innerHTML =
+            '<div class="loading"><div class="spinner"></div></div>';
+        document.getElementById('emptyState').style.display = 'none';
+
+        // 构建查询参数
+        var params = new URLSearchParams();
+        if (currentKeyword) params.append('keyword', currentKeyword);
+        if (currentCategoryId > 0) params.append('category_id', currentCategoryId);
+
+        // Fetch API 异步请求（不刷新页面）
+        fetch('api/search?' + params.toString())
+            .then(function(resp) {
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                return resp.json();
+            })
+            .then(function(result) {
+                if (result.code === 200) {
+                    renderBooks(result.data);
+                    document.getElementById('resultCount').textContent =
+                        '共 ' + result.data.length + ' 本';
+                } else {
+                    showToast(result.msg || '查询失败', 'error');
+                }
+            })
+            .catch(function(err) {
+                console.error('搜索异常:', err);
+                showToast('网络异常，请稍后重试', 'error');
+                document.getElementById('bookGrid').innerHTML = '';
+                document.getElementById('emptyState').style.display = 'block';
+            });
+    }
+
+    // ============================================
+    // 前端局部渲染：动态重构图书卡片（DOM操作）
+    // ============================================
+    function renderBooks(books) {
+        var grid = document.getElementById('bookGrid');
+        var empty = document.getElementById('emptyState');
+
+        if (!books || books.length === 0) {
+            grid.innerHTML = '';
+            empty.style.display = 'block';
+            return;
+        }
+
+        empty.style.display = 'none';
+        var html = '';
+
+        // 图书封面渐变色（用于无封面时的占位）
+        var gradients = [
+            'linear-gradient(135deg, #667eea, #764ba2)',
+            'linear-gradient(135deg, #f093fb, #f5576c)',
+            'linear-gradient(135deg, #4facfe, #00f2fe)',
+            'linear-gradient(135deg, #43e97b, #38f9d7)',
+            'linear-gradient(135deg, #fa709a, #fee140)',
+            'linear-gradient(135deg, #a18cd1, #fbc2eb)',
+            'linear-gradient(135deg, #fccb90, #d57eeb)',
+            'linear-gradient(135deg, #e0c3fc, #8ec5fc)',
+        ];
+
+        for (var i = 0; i < books.length; i++) {
+            var book = books[i];
+            var gradient = gradients[i % gradients.length];
+
+            // 封面 HTML
+            var coverHtml;
+            if (book.cover_path) {
+                coverHtml = '<img src="' + escapeHtml(book.cover_path) + '" alt="封面">';
+            } else {
+                coverHtml = '<div class="book-cover-placeholder" style="background:' + gradient + '">' +
+                            escapeHtml(book.title.charAt(0)) + '</div>';
+            }
+
+            // 库存状态
+            var stockClass = book.stock <= 0 ? 'out-of-stock' : '';
+            var stockText = book.stock > 0 ? '库存: ' + book.stock : '已售罄';
+
+            // 借阅按钮状态（状态机）
+            var btnClass, btnText, btnDisabled;
+            if (book.stock <= 0) {
+                btnClass = 'disabled';
+                btnText = '库存不足';
+                btnDisabled = 'disabled';
+            } else {
+                btnClass = 'can-borrow';
+                btnText = '借阅';
+                btnDisabled = '';
+            }
+
+            html += '<div class="book-card" id="book-' + book.id + '">' +
+                    '<div class="book-cover">' + coverHtml + '</div>' +
+                    '<div class="book-info">' +
+                    '<div class="book-title" title="' + escapeHtml(book.title) + '">' + escapeHtml(book.title) + '</div>' +
+                    '<div class="book-author">' + escapeHtml(book.author || '未知作者') + '</div>' +
+                    '<div class="book-meta">' +
+                    '<span class="book-category">' + escapeHtml(book.category_name || '未分类') + '</span>' +
+                    '<span class="book-stock ' + stockClass + '" id="stock-' + book.id + '">' + stockText + '</span>' +
+                    '</div></div>' +
+                    '<button class="borrow-btn ' + btnClass + '" id="btn-' + book.id + '" ' +
+                    btnDisabled + ' onclick="borrowBook(' + book.id + ')">' + btnText + '</button>' +
+                    '</div>';
+        }
+
+        grid.innerHTML = html;
+    }
+
+    // ============================================
+    // 异步借阅（AJAX POST + 事务控制）
+    // ============================================
+    function borrowBook(bookId) {
+        // 检查是否选择了读者
+        var readerId = document.getElementById('readerSelect').value;
+        if (!readerId) {
+            showToast('请先选择一位读者', 'error');
+            return;
+        }
+
+        // 立即禁用按钮，防止重复点击
+        var btn = document.getElementById('btn-' + bookId);
+        btn.disabled = true;
+        btn.textContent = '借阅中...';
+        btn.className = 'borrow-btn borrowed';
+
+        // Fetch API 发起 POST 请求
+        fetch('api/borrow', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                book_id: bookId,
+                reader_id: parseInt(readerId)
+            })
+        })
+        .then(function(resp) {
+            return resp.json();
+        })
+        .then(function(result) {
+            if (result.code === 200) {
+                // 借阅成功：更新按钮文本和库存（不刷新页面）
+                btn.textContent = '已借阅';
+                btn.className = 'borrow-btn borrowed';
+                btn.disabled = true;
+
+                // 更新库存显示
+                var stockEl = document.getElementById('stock-' + bookId);
+                if (result.data && result.data.stock !== undefined) {
+                    var newStock = result.data.stock;
+                    stockEl.textContent = newStock > 0 ? '库存: ' + newStock : '已售罄';
+                    if (newStock <= 0) {
+                        stockEl.className = 'book-stock out-of-stock';
+                    }
+                }
+
+                showToast('借阅成功！', 'success');
+            } else {
+                // 借阅失败：恢复按钮状态
+                btn.disabled = false;
+                btn.textContent = '借阅';
+                btn.className = 'borrow-btn can-borrow';
+                showToast(result.msg || '借阅失败', 'error');
+            }
+        })
+        .catch(function(err) {
+            console.error('借阅异常:', err);
+            btn.disabled = false;
+            btn.textContent = '借阅';
+            btn.className = 'borrow-btn can-borrow';
+            showToast('网络异常，请稍后重试', 'error');
+        });
+    }
+
+    // ============================================
+    // 加载读者列表
+    // ============================================
+    function loadReaders() {
+        fetch('api/readers')
+            .then(function(resp) { return resp.json(); })
+            .then(function(result) {
+                if (result.code === 200) {
+                    var select = document.getElementById('readerSelect');
+                    for (var i = 0; i < result.data.length; i++) {
+                        var r = result.data[i];
+                        var option = document.createElement('option');
+                        option.value = r.id;
+                        option.textContent = r.name + ' (' + r.cardNo + ')';
+                        select.appendChild(option);
+                    }
+                    select.addEventListener('change', function() {
+                        currentReaderId = this.value || null;
+                    });
+                }
+            })
+            .catch(function(err) {
+                console.error('加载读者失败:', err);
+            });
+    }
+
+    // ============================================
+    // 添加图书弹窗
+    // ============================================
+    function showAddBookModal() {
+        document.getElementById('addBookModal').classList.add('active');
+        // 加载分类到下拉框
+        var select = document.getElementById('addCategory');
+        if (select.options.length <= 1) {
+            fetch('api/categories')
+                .then(function(resp) { return resp.json(); })
+                .then(function(result) {
+                    if (result.code === 200) {
+                        select.innerHTML = '';
+                        for (var i = 0; i < result.data.length; i++) {
+                            var c = result.data[i];
+                            var option = document.createElement('option');
+                            option.value = c.id;
+                            option.textContent = c.name;
+                            select.appendChild(option);
+                        }
+                    }
+                });
+        }
+    }
+
+    function closeAddBookModal() {
+        document.getElementById('addBookModal').classList.remove('active');
+    }
+
+    // ============================================
+    // 图片上传实时预览
+    // ============================================
+    function previewCover(input) {
+        if (input.files && input.files[0]) {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                var preview = document.getElementById('coverPreview');
+                preview.innerHTML = '<img src="' + e.target.result + '" alt="封面预览">' +
+                    '<input type="file" id="coverFile" accept="image/*" onchange="previewCover(this)">';
+            };
+            reader.readAsDataURL(input.files[0]);
+
+            // 上传到服务器
+            var formData = new FormData();
+            formData.append('file', input.files[0]);
+            fetch('api/upload', { method: 'POST', body: formData })
+                .then(function(resp) { return resp.json(); })
+                .then(function(result) {
+                    if (result.code === 200) {
+                        document.getElementById('addCoverPath').value = result.data.file_path;
+                        showToast('封面上传成功', 'success');
+                    } else {
+                        showToast(result.msg || '上传失败', 'error');
+                    }
+                })
+                .catch(function(err) {
+                    showToast('上传异常', 'error');
+                });
+        }
+    }
+
+    // ============================================
+    // 提交添加图书
+    // ============================================
+    function submitAddBook() {
+        var title = document.getElementById('addTitle').value.trim();
+        if (!title) {
+            showToast('请输入书名', 'error');
+            return;
+        }
+
+        var data = {
+            title: title,
+            author: document.getElementById('addAuthor').value.trim(),
+            isbn: document.getElementById('addIsbn').value.trim(),
+            category_id: parseInt(document.getElementById('addCategory').value),
+            stock: parseInt(document.getElementById('addStock').value) || 1,
+            cover_path: document.getElementById('addCoverPath').value
+        };
+
+        fetch('api/book/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        })
+        .then(function(resp) { return resp.json(); })
+        .then(function(result) {
+            if (result.code === 200) {
+                showToast('添加成功！', 'success');
+                closeAddBookModal();
+                // 清空表单
+                document.getElementById('addTitle').value = '';
+                document.getElementById('addAuthor').value = '';
+                document.getElementById('addIsbn').value = '';
+                document.getElementById('addStock').value = '1';
+                document.getElementById('addCoverPath').value = '';
+                document.getElementById('coverPreview').innerHTML =
+                    '<span>点击上传封面</span><input type="file" id="coverFile" accept="image/*" onchange="previewCover(this)">';
+                // 刷新图书列表
+                searchBooks();
+            } else {
+                showToast(result.msg || '添加失败', 'error');
+            }
+        })
+        .catch(function(err) {
+            showToast('网络异常', 'error');
+        });
+    }
+
+    // ============================================
+    // Toast 提示（弹窗提示，非 Tomcat 错误页）
+    // ============================================
+    function showToast(message, type) {
+        var container = document.getElementById('toastContainer');
+        var toast = document.createElement('div');
+        toast.className = 'toast ' + (type || 'info');
+        toast.textContent = message;
+        container.appendChild(toast);
+        // 3秒后自动消失
+        setTimeout(function() {
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.3s';
+            setTimeout(function() { container.removeChild(toast); }, 300);
+        }, 3000);
+    }
+
+    // ============================================
+    // HTML 转义（防 XSS）
+    // ============================================
+    function escapeHtml(text) {
+        if (!text) return '';
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(text));
+        return div.innerHTML;
+    }
+</script>
+</body>
+</html>
